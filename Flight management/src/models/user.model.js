@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     unique: true,
     trim: true,
+    lowercase: true,
     required: [true, "Email is required"],
     validate: {
       validator: validator.isEmail,
@@ -18,6 +19,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Password is required"],
     minlength: [8, "Password must be 8 characters long"],
+    select: false,
   },
   passwordConfirm: {
     type: String,
