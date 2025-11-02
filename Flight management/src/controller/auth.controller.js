@@ -2,6 +2,7 @@ const { createError, signToken } = require("../utils/flight.util");
 const User = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const { promisify } = require("util");
+const JWT = require("jsonwebtoken");
 
 exports.signup = async (req, res, next) => {
   try {
@@ -10,9 +11,12 @@ exports.signup = async (req, res, next) => {
       email: req.body.email,
       password: req.body.password,
       passwordConfirm: req.body.passwordConfirm,
+      role: req.body.role,
     });
 
     const token = signToken(newUser._id);
+
+    newUser.password = undefined;
 
     res.status(201).json({
       status: "success",
@@ -57,18 +61,20 @@ exports.protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
     }
     if (!token) {
-      return next(
-        new AppError(
-          "Your are not logged in. Please login to get authorized",
-          401
-        )
+      throw createError(
+        "You are not logged in. Please login to get authorized",
+        401
       );
     }
-    const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+    const decoded = await promisify(JWT.verify)(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.id);
-    if (!freshUser) {
-      throw createError("");
+    if (!user) {
+      throw createError("This user does no longer exist", 400);
+    }
+
+    if (user.changedPasswordAfter(decoded.iat)) {
+      throw createError("User has changed password. Please login again!");
     }
 
     req.user = user;
@@ -76,4 +82,16 @@ exports.protect = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+exports.restrictTo = () => {
+  return (req, res, next) => {
+    if (req.user.role === "user") {
+      throw createError(
+        "You do not have permisson to perform this action",
+        403
+      );
+    }
+    next();
+  };
 };
