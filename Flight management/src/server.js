@@ -1,17 +1,18 @@
 const app = require("./app");
-const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const logger = require("./config/logger.config");
 const { connectDB } = require("./config/db.config");
 dotenv.config();
 
 const startServer = async () => {
   try {
+    logger.info("Starting flight management server...");
     await connectDB();
     app.listen(process.env.PORT, () => {
-      console.log("server has started");
+      logger.info("Server has started");
     });
   } catch (error) {
-    console.log("Failed to start server");
+    logger.error("Failed to start server", { error });
     process.exit(1);
   }
 };
