@@ -11,7 +11,12 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     validate: [validator.isEmail, "Please provide a valid email"],
   },
-  password: { type: String, min: 8, required: [true, "Password is required"] },
+  password: {
+    type: String,
+    min: 8,
+    required: [true, "Password is required"],
+    select: false,
+  },
   passwordConfirm: {
     type: String,
     required: [true, "Please confirm your password"],
@@ -23,6 +28,7 @@ const UserSchema = new mongoose.Schema({
     },
   },
   createdAt: { type: Date, default: Date.now },
+  passwordChangedAt: Date,
 });
 
 UserSchema.pre("save", async function (next) {
@@ -43,6 +49,17 @@ UserSchema.methods.signToken = function () {
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRESIN,
   });
+};
+
+UserSchema.methods.changedPasswordAfter = function (jwtTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+    return jwtTimestamp < changedTimestamp;
+  }
+  return false;
 };
 
 const User = new mongoose.model("User", UserSchema);

@@ -1,26 +1,26 @@
 const { Router } = require("express");
 const {
-  createExpense,
-  getExpense,
+  monthlySummary,
   getSingleExpense,
   updateExpense,
   deleteExpense,
-  summary,
-  monthlySummary,
+  getAllExpenses,
+  yearlySummary,
 } = require("../controllers/expense.controller");
+const { protect } = require("../controllers/auth.controller");
 
 const router = Router();
 
-router.route("/").post(createExpense).get(getExpense);
+router.route("/").get(protect, getAllExpenses);
 
-router.route("/summary").get(summary);
+router.route("/month-summary/:year/:month").get(protect, monthlySummary);
 
-router.route("/summary/:year/:month").get(monthlySummary);
+router.route("/year-summary/:year").get(protect, yearlySummary);
 
 router
-  .route("/:id")
-  .get(getSingleExpense)
-  .patch(updateExpense)
-  .delete(deleteExpense);
+  .route("/:expenseId")
+  .get(protect, getSingleExpense)
+  .patch(protect, updateExpense)
+  .delete(protect, deleteExpense);
 
 module.exports = router;

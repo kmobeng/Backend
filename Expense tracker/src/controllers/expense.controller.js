@@ -1,71 +1,112 @@
 const logger = require("../config/logger.config");
 const {
   createExpenseService,
-  getExpenseService,
+  getExpenseForACategoryService,
   getSingleExpenseService,
   updateExpenseService,
   deleteExpenseService,
   summaryService,
   monthlySummaryService,
+  getAllExpensesService,
+  yearlySummaryService,
 } = require("../services/expense.service");
 
 exports.createExpense = async (req, res, next) => {
   try {
     const { desc, amount, createdAt } = req.body;
+    const { categoryId } = req.params;
+    const userId = req.user._id;
 
     logger.info("Creating new expense", {
       desc,
       amount,
       createdAt,
-      userId: req.user.id,
+      categoryId,
+      userId,
     });
 
-    const result = await createExpenseService(desc, amount, createdAt);
+    const expense = await createExpenseService(
+      desc,
+      amount,
+      createdAt,
+      categoryId,
+      userId
+    );
 
     logger.info("Expense created successfully", {
-      expenseId: result._id,
-      userId: req.user.id,
+      expenseId: expense._id,
+      categoryId,
+      userId,
     });
 
     res.status(201).json({
       status: "success",
-      data: result,
+      data: expense,
     });
   } catch (error) {
     logger.error("Error creating expense", {
       error: error.message,
       stack: error.stack,
-      userId: req.user?.id,
+      category: req.params.categoryId,
+      user: req.user._id,
       body: req.body,
     });
     next(error);
   }
 };
 
-exports.getExpense = async (req, res, next) => {
+exports.getAllExpenses = async (req, res, next) => {
   try {
+    logger.info("Fetching expenses", { userId: req.user._id });
+    const expenses = await getAllExpensesService(req.user._id, req.query);
+    logger.info("Expenses fetched successfully", {
+      count: expenses.length,
+      userId: req.user._id,
+    });
+    res
+      .status(200)
+      .json({ status: "success", result: expenses.length, data: { expenses } });
+  } catch (error) {
+    logger.error("Error fetching all expense", {
+      error: error.message,
+      stack: error.stack,
+      user: req.user._id,
+    });
+    next(error);
+  }
+};
+
+exports.getExpenseForACategory = async (req, res, next) => {
+  try {
+    const { categoryId } = req.params;
+    const userId = req.user._id;
     logger.info("Fetching all expenses", {
-      userId: req.user.id,
-      query: req.query,
+      categoryId,
+      userId,
     });
 
-    const result = await getExpenseService();
+    const expenses = await getExpenseForACategoryService(
+      categoryId,
+      userId,
+      req.query
+    );
 
     logger.info("Expenses fetched successfully", {
-      count: result.length,
-      userId: req.user.id,
+      count: expenses.length,
+      userId,
+      categoryId,
     });
-
     res.status(200).json({
       status: "success",
-      length: result.length,
-      data: result,
+      length: expenses.length,
+      data: { expenses },
     });
   } catch (error) {
     logger.error("Error fetching expenses", {
       error: error.message,
       stack: error.stack,
-      userId: req.user?.id,
+      userId: req.user._id,
+      categoryId: req.params?.categoryId,
     });
     next(error);
   }
@@ -73,30 +114,38 @@ exports.getExpense = async (req, res, next) => {
 
 exports.getSingleExpense = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { expenseId, categoryId } = req.params;
+    userId = req.user._id;
 
     logger.info("Fetching single expense", {
-      expenseId: id,
-      userId: req.user.id,
+      expenseId,
+      userId,
+      categoryId,
     });
 
-    const result = await getSingleExpenseService(id);
+    const expense = await getSingleExpenseService(
+      categoryId,
+      expenseId,
+      userId
+    );
 
     logger.info("Single expense fetched successfully", {
-      expenseId: id,
-      userId: req.user.id,
+      expenseId,
+      userId,
+      categoryId,
     });
 
     res.status(200).json({
       status: "success",
-      data: result,
+      data: expense,
     });
   } catch (error) {
     logger.error("Error fetching single expense", {
       error: error.message,
       stack: error.stack,
-      expenseId: req.params.id,
-      userId: req.user?.id,
+      expenseId: req.params.expenseId,
+      categoryId: req.params.categoryId,
+      userId: req.user._id,
     });
     next(error);
   }
@@ -104,32 +153,42 @@ exports.getSingleExpense = async (req, res, next) => {
 
 exports.updateExpense = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { categoryId, expenseId } = req.params;
     const { desc, amount } = req.body;
+    const userId = req.user._id;
 
     logger.info("Updating expense", {
-      expenseId: id,
+      expenseId,
+      categoryId,
       updates: { desc, amount },
-      userId: req.user.id,
+      userId,
     });
 
-    const result = await updateExpenseService(id, desc, amount);
+    const expense = await updateExpenseService(
+      expenseId,
+      categoryId,
+      userId,
+      desc,
+      amount
+    );
 
     logger.info("Expense updated successfully", {
-      expenseId: id,
-      userId: req.user.id,
+      expenseId,
+      categoryId,
+      userId,
     });
 
     res.status(200).json({
       status: "success",
-      data: result,
+      data: expense,
     });
   } catch (error) {
     logger.error("Error updating expense", {
       error: error.message,
       stack: error.stack,
       expenseId: req.params.id,
-      userId: req.user?.id,
+      categoryId: req.params.id,
+      userId: req.user._id,
       body: req.body,
     });
     next(error);
@@ -138,18 +197,20 @@ exports.updateExpense = async (req, res, next) => {
 
 exports.deleteExpense = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
+    const { expenseId, categoryId } = req.params;
+    const userId = req.user._id;
     logger.info("Deleting expense", {
-      expenseId: id,
-      userId: req.user.id,
+      expenseId,
+      categoryId,
+      userId,
     });
 
-    await deleteExpenseService(id);
+    await deleteExpenseService(expenseId, categoryId, userId);
 
     logger.info("Expense deleted successfully", {
-      expenseId: id,
-      userId: req.user.id,
+      expenseId,
+      categoryId,
+      userId,
     });
 
     res.status(200).json({
@@ -160,33 +221,8 @@ exports.deleteExpense = async (req, res, next) => {
       error: error.message,
       stack: error.stack,
       expenseId: req.params.id,
-      userId: req.user?.id,
-    });
-    next(error);
-  }
-};
-
-exports.summary = async (req, res, next) => {
-  try {
-    logger.info("Fetching expense summary", {
-      userId: req.user.id,
-    });
-
-    const result = await summaryService();
-
-    logger.info("Summary fetched successfully", {
-      userId: req.user.id,
-    });
-
-    res.status(200).json({
-      status: "success",
-      data: result,
-    });
-  } catch (error) {
-    logger.error("Error fetching summary", {
-      error: error.message,
-      stack: error.stack,
-      userId: req.user?.id,
+      categoryId: req.params.id,
+      userId: req.user._id,
     });
     next(error);
   }
@@ -202,7 +238,7 @@ exports.monthlySummary = async (req, res, next) => {
       userId: req.user.id,
     });
 
-    const result = await monthlySummaryService(year, month);
+    const result = await monthlySummaryService(year, month, req.user._id);
 
     logger.info("Monthly summary fetched successfully", {
       year,
@@ -220,6 +256,37 @@ exports.monthlySummary = async (req, res, next) => {
       stack: error.stack,
       year: req.params.year,
       month: req.params.month,
+      userId: req.user?.id,
+    });
+    next(error);
+  }
+};
+
+exports.yearlySummary = async (req, res, next) => {
+  try {
+    const { year } = req.params;
+
+    logger.info("Fetching yearly summary", {
+      year,
+      userId: req.user.id,
+    });
+
+    const result = await yearlySummaryService(year, req.user._id);
+
+    logger.info("Yeatly summary fetched successfully", {
+      year,
+      userId: req.user.id,
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    logger.error("Error fetching yearly summary", {
+      error: error.message,
+      stack: error.stack,
+      year: req.params.year,
       userId: req.user?.id,
     });
     next(error);
