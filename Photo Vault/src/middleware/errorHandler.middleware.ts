@@ -36,6 +36,8 @@ export const errorHandler = (
     errorMessage = "Token expired. Please login again.";
   }
 
+  console.log(err);
+
   res.status(statusCode).json({
     status: "fail",
     error: errorMessage,

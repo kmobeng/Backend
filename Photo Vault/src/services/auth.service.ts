@@ -24,3 +24,18 @@ export const signUpService = async (
     throw error;
   }
 };
+
+export const loginService = async (
+  email: string,
+  candidatePassword: string
+) => {
+  try {
+    const user = await User.findOne({ email }).select("+password");
+    if (!user || !user.comparePassword(candidatePassword)) {
+      throw createError("email or password is incorrect", 400);
+    }
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};

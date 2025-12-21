@@ -13,6 +13,8 @@ export interface IUser extends Document {
   passwordChangedAt: Date;
 
   signToken(): string;
+  comparePassword(candidatePassword: string): Promise<boolean>;
+  changedPasswordAfter(JWTTimestamp: any): boolean;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -62,10 +64,17 @@ UserSchema.methods.signToken = function () {
 };
 
 UserSchema.methods.comparePassword = async function (
-  candidatePassword: string,
-  userPassword: string
+  candidatePassword: string
 ) {
-  return await bcrypt.compare(candidatePassword, userPassword);
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+UserSchema.methods.changedPasswordAfter = function (JWTTimestamp: any) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp: any = this.passwordChangedAt.getTime() / 1000;
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
 };
 
 export default model<IUser>("User", UserSchema);
