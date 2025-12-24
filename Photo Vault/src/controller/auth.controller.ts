@@ -2,7 +2,21 @@ import { Request, Response, NextFunction } from "express";
 import { createError } from "../utils/error.util";
 import { loginService, signUpService } from "../services/auth.service";
 import JWT from "jsonwebtoken";
-import User from "../model/user.model";
+import User, { IUser } from "../model/user.model";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user: IUser;
+    }
+  }
+}
+
+interface JWTPayload {
+  id: string;
+  iat: number;
+  exp: number;
+}
 
 export const signUp = async (
   req: Request,
@@ -57,6 +71,7 @@ export const protect = async (
 ) => {
   try {
     let token: any;
+
     if (
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer")
@@ -68,8 +83,9 @@ export const protect = async (
       throw createError("You are not logged in. Please login to continue", 401);
     }
 
-    const decoded: any = JWT.verify(token, process.env.JWT_SECRET!);
-    const currentUser = await User.findById(decoded.id);
+    const decoded = JWT.verify(token, process.env.JWT_SECRET!) as JWTPayload;
+    const currentUser = await User.findById(decoded.id).select("+password");
+
     if (!currentUser) {
       throw createError("The user with this token does not exist", 404);
     }
@@ -78,7 +94,8 @@ export const protect = async (
       throw createError("Password changed. Please login again", 400);
     }
 
-    (req as any).user = currentUser;
+    req.user = currentUser;
+
     next();
   } catch (error) {
     next(error);

@@ -7,14 +7,14 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  passwordConfirm: string;
+  passwordConfirm?: string;
   createdAt: Date;
   role: string;
-  passwordChangedAt: Date;
+  passwordChangedAt?: Date;
 
   signToken(): string;
   comparePassword(candidatePassword: string): Promise<boolean>;
-  changedPasswordAfter(JWTTimestamp: any): boolean;
+  changedPasswordAfter(JWTTimestamp: number): boolean;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -77,4 +77,6 @@ UserSchema.methods.changedPasswordAfter = function (JWTTimestamp: any) {
   return false;
 };
 
-export default model<IUser>("User", UserSchema);
+const User = model<IUser>("User", UserSchema);
+
+export default User;
