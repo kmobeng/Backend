@@ -1,15 +1,4 @@
-import { Document, model, Schema } from "mongoose";
-
-export interface IPhoto extends Document {
-  title: string;
-  description?: string;
-  visibility: string;
-  url: string;
-  publicId: string;
-  user: string;
-  album?: string;
-  createdAt: Date;
-}
+import { Document, InferSchemaType, model, ObjectId, Schema } from "mongoose";
 
 const PhotoSchema = new Schema({
   title: { type: String, required: [true, "title is required"] },
@@ -25,6 +14,10 @@ const PhotoSchema = new Schema({
   album: { type: Schema.Types.ObjectId, ref: "Album" },
   createdAt: { type: Date, default: Date.now },
 });
+
+PhotoSchema.index({ user: 1 });
+
+type IPhoto = InferSchemaType<typeof PhotoSchema>;
 
 const Photo = model<IPhoto>("Photo", PhotoSchema);
 

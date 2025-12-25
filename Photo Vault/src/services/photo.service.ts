@@ -1,7 +1,8 @@
-import mongoose from "mongoose";
+import mongoose, { ObjectId, Types } from "mongoose";
 import Photo from "../model/photo.model";
 import { createError } from "../utils/error.util";
-import { cloudinary } from "../config/db.config";
+import { cloudinary, RedisClient } from "../config/db.config";
+import User from "../model/user.model";
 
 export const uploadPhotoService = async (
   title: string,
@@ -44,9 +45,19 @@ export const uploadPhotoService = async (
   }
 };
 
-export const getAllPhotos = async (userId: string) => {
+export const getAllPhotosService = async (username: string) => {
   try {
-    const photos = await Photo.find({ user: userId });
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      throw createError("Error fetching all photos", 400);
+    }
+
+    const photos = await Photo.find({ user: user._id });
+
+    RedisClient.setex(`photos:${username}`, 3600, JSON.stringify(photos));
+
+    return photos;
   } catch (error) {
     throw error;
   }

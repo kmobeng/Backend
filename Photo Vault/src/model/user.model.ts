@@ -6,6 +6,7 @@ import JWT from "jsonwebtoken";
 export interface IUser extends Document {
   name: string;
   email: string;
+  username: string;
   password: string;
   passwordConfirm?: string;
   createdAt: Date;
@@ -23,11 +24,34 @@ const UserSchema = new Schema<IUser>({
     type: String,
     unique: true,
     required: [true, "email is required"],
+    trim: true,
+    lowercase: true,
     validate: {
       validator: function (value: string) {
         return validator.isEmail(value);
       },
       message: "Please provide a valid email",
+    },
+  },
+  username: {
+    type: String,
+    required: [true, "username is required. Please provide!"],
+    unique: true,
+    trim: true,
+    validate: {
+      validator: function (value: string) {
+        for (const char of value) {
+          if (!validator.isAlphanumeric(char) && char !== "_" && char !== ".") {
+            return false;
+          }
+        }
+        if (value[value.length - 1] === ".") {
+          return false;
+        }
+        return true;
+      },
+      message:
+        "invalid username format. username must contain alphabets,numbers,underscore,full-stop and must not end with a full-stop",
     },
   },
   password: {
@@ -64,6 +88,7 @@ UserSchema.methods.signToken = function () {
 };
 
 UserSchema.methods.comparePassword = async function (
+  this: IUser,
   candidatePassword: string
 ) {
   return await bcrypt.compare(candidatePassword, this.password);

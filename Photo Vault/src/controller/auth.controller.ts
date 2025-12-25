@@ -24,17 +24,22 @@ export const signUp = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { name, email, password, passwordConfirm, role } = req.body;
+    const { name, email, username, password, passwordConfirm, role } = req.body;
 
-    const user = await signUpService(
+    const fetchedUser = await signUpService(
       name,
       email,
+      username,
       password,
       passwordConfirm,
       role
     );
 
-    const token = await user.signToken();
+    const token = fetchedUser.signToken();
+
+    const user: any = fetchedUser.toObject();
+    delete user.password;
+
     res.status(201).json({ status: "success", token, data: { user } });
   } catch (error) {
     next(error);

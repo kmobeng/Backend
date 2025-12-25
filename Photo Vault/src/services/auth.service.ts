@@ -4,6 +4,7 @@ import { createError } from "../utils/error.util";
 export const signUpService = async (
   name: string,
   email: string,
+  username: string,
   password: string,
   passwordConfirm: string,
   role: string
@@ -12,6 +13,7 @@ export const signUpService = async (
     const user = await User.create({
       name,
       email,
+      username,
       password,
       passwordConfirm,
       role,
@@ -31,7 +33,7 @@ export const loginService = async (
 ) => {
   try {
     const user = await User.findOne({ email }).select("+password");
-    if (!user || !user.comparePassword(candidatePassword)) {
+    if (!user || !(await user.comparePassword(candidatePassword))) {
       throw createError("email or password is incorrect", 400);
     }
     return user;
