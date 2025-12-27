@@ -53,8 +53,9 @@ export const getAllPhotosService = async (
   userId: string,
   queryString: any
 ) => {
-  const userKey = `user:${userId}`;
-  const photosKey = `photos:${userId}`;
+  const userKey = `user:${username}`;
+  const queryKey = JSON.stringify(queryString || {});
+  const photosKey = `photos:${userId}:${username}:${queryKey}`;
 
   try {
     const cachedPhotos = await RedisClient.get(photosKey);
@@ -83,14 +84,14 @@ export const getAllPhotosService = async (
       await RedisClient.setex(userKey, 86400, JSON.stringify(user));
     }
 
-    if (user._id !== userId) {
-      let setVisibility = "private";
+    const filter: any = { user: user._id };
+
+    if (user._id.toString() !== userId) {
+      filter.visibility = "public";
+      queryString.visibility = undefined;
     }
 
-    const features = new APIFeatures(
-      Photo.find({ user: user._id }),
-      queryString
-    )
+    const features = new APIFeatures(Photo.find(filter), queryString)
       .filter()
       .sort()
       .limitFields()
@@ -103,6 +104,35 @@ export const getAllPhotosService = async (
     }
 
     return photos;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getSinglePhotoService = async (
+  photoId: string,
+  userId: string
+) => {
+  const photoKey = `photo:${userId}:${photoId}`;
+
+  try {
+    const cachedPhoto = await RedisClient.get(photoKey);
+
+    if (cachedPhoto) {
+      console.log("Photos cache hit");
+      return JSON.parse(cachedPhoto);
+    }
+
+    console.log("Photos cache miss");
+    if (!mongoose.Types.ObjectId.isValid(photoId)) {
+      throw createError("Invalid photo ID", 400);
+    }
+
+    const photo = await Photo.findById({ photoId });
+    if (photo === null) {
+      RedisClient.setex(photoKey, 3600, JSON.stringify(photo));
+    }
+    return photo;
   } catch (error) {
     throw error;
   }

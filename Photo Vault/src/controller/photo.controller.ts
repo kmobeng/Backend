@@ -1,24 +1,11 @@
 import { Request, Response, NextFunction } from "express";
-import { cloudinary, RedisClient } from "../config/db.config";
+import { cloudinary } from "../config/db.config";
 import {
   getAllPhotosService,
+  getSinglePhotoService,
   uploadPhotoService,
 } from "../services/photo.service";
-
-interface QueryString {
-  page?: string | number;
-  sort?: string;
-  limit?: string | number;
-  fields?: string;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      queryString: QueryString;
-    }
-  }
-}
+import { createError } from "../utils/error.util";
 
 export const uploadPhoto = async (
   req: Request,
@@ -76,13 +63,36 @@ export const getAllPhotos = async (
     const photos = await getAllPhotosService(
       username,
       req.user._id.toString(),
-      req.queryString
+      req.query
     );
 
     if (photos.length === 0) {
       return res.status(200).json({ message: "No photos found" });
     }
-    res.status(200).json({ status: "success", data: { photos } });
+    res
+      .status(200)
+      .json({ status: "success", result: photos.length, data: { photos } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSinglePhoto = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { photoId } = req.params;
+    if (!photoId) {
+      throw createError("No photo id provided", 400);
+    }
+    const photo = await getSinglePhotoService(
+      photoId!.toString(),
+      req.user._id.toString()
+    );
+
+    res.status(200).json({ status: "success", data: photo });
   } catch (error) {
     next(error);
   }
