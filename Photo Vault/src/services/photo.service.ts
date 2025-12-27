@@ -3,6 +3,7 @@ import Photo from "../model/photo.model";
 import { createError } from "../utils/error.util";
 import { cloudinary, RedisClient } from "../config/db.config";
 import User from "../model/user.model";
+import APIFeatures from "../utils/APIFeatures.util";
 
 export const uploadPhotoService = async (
   title: string,
@@ -30,6 +31,8 @@ export const uploadPhotoService = async (
       album: albumId,
     });
 
+    RedisClient.del(`photos:${userId}`);
+
     if (!photo) {
       createError("Unable to create photo", 400);
     }
@@ -45,17 +48,59 @@ export const uploadPhotoService = async (
   }
 };
 
-export const getAllPhotosService = async (username: string) => {
-  try {
-    const user = await User.findOne({ username });
+export const getAllPhotosService = async (
+  username: string,
+  userId: string,
+  queryString: any
+) => {
+  const userKey = `user:${userId}`;
+  const photosKey = `photos:${userId}`;
 
-    if (!user) {
-      throw createError("Error fetching all photos", 400);
+  try {
+    const cachedPhotos = await RedisClient.get(photosKey);
+
+    if (cachedPhotos) {
+      console.log("Photos cache hit");
+      return JSON.parse(cachedPhotos);
     }
 
-    const photos = await Photo.find({ user: user._id });
+    console.log("Photos cache miss");
 
-    RedisClient.setex(`photos:${username}`, 3600, JSON.stringify(photos));
+    let user;
+    const cachedUser = await RedisClient.get(userKey);
+
+    if (cachedUser) {
+      console.log("User cache hit");
+      user = JSON.parse(cachedUser);
+    } else {
+      console.log("User cache miss");
+      user = await User.findOne({ username }).select("_id username").lean();
+
+      if (!user) {
+        throw createError("Error fetching photos", 404);
+      }
+
+      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
+    }
+
+    if (user._id !== userId) {
+      let setVisibility = "private";
+    }
+
+    const features = new APIFeatures(
+      Photo.find({ user: user._id }),
+      queryString
+    )
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+
+    const photos = await features.query;
+
+    if (photos.length > 0) {
+      await RedisClient.setex(photosKey, 3600, JSON.stringify(photos));
+    }
 
     return photos;
   } catch (error) {

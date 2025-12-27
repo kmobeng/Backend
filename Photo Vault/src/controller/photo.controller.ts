@@ -5,6 +5,21 @@ import {
   uploadPhotoService,
 } from "../services/photo.service";
 
+interface QueryString {
+  page?: string | number;
+  sort?: string;
+  limit?: string | number;
+  fields?: string;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      queryString: QueryString;
+    }
+  }
+}
+
 export const uploadPhoto = async (
   req: Request,
   res: Response,
@@ -58,23 +73,16 @@ export const getAllPhotos = async (
   try {
     const username = req.params.username || req.user.username;
 
-    RedisClient.get(`photos:${username}`, async (error, photos) => {
-      if (error) throw error;
-      if (photos !== null) {
-        console.log("cache hit");
-        return res
-          .status(200)
-          .json({ status: "success", data: JSON.parse(photos!) });
-      } else {
-        console.log("cache miss");
-        const photos = await getAllPhotosService(username);
+    const photos = await getAllPhotosService(
+      username,
+      req.user._id.toString(),
+      req.queryString
+    );
 
-        if (photos.length === 0) {
-          return res.status(200).json({ message: "No photos found" });
-        }
-        res.status(200).json({ status: "success", data: { photos } });
-      }
-    });
+    if (photos.length === 0) {
+      return res.status(200).json({ message: "No photos found" });
+    }
+    res.status(200).json({ status: "success", data: { photos } });
   } catch (error) {
     next(error);
   }
