@@ -17,7 +17,7 @@ const PhotoSchema = new Schema({
 
 PhotoSchema.index({ user: 1, createdAt: -1 });
 
-type IPhoto = InferSchemaType<typeof PhotoSchema>;
+export type IPhoto = InferSchemaType<typeof PhotoSchema>;
 
 const Photo = model<IPhoto>("Photo", PhotoSchema);
 

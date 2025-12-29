@@ -1,5 +1,5 @@
 import mongoose, { Types } from "mongoose";
-import Photo from "../model/photo.model";
+import Photo, { IPhoto } from "../model/photo.model";
 import { createError } from "../utils/error.util";
 import { cloudinary, RedisClient } from "../config/db.config";
 import User from "../model/user.model";
@@ -42,9 +42,11 @@ export const uploadPhotoService = async (
   } catch (error) {
     try {
       await cloudinary.uploader.destroy(publicId);
-      console.log("Photo deleted from Cloudinary:");
     } catch (deleteError) {
-      console.error("Failed to cleanup Cloudinary:", deleteError);
+      throw createError(
+        "Unable to cleanup cloudinary after upload photo failed",
+        400
+      );
     }
     throw error;
   }
@@ -165,6 +167,28 @@ export const updatePhotoService = async (
       throw createError("Unable to update photo", 400);
     }
     return photo;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deletePhotoService = async (photoId: any, userId: string) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(photoId)) {
+      throw createError("Invalid photo ID", 400);
+    }
+    const photo: any = await Photo.findOne({ user: userId, _id: photoId });
+    if (!photo) {
+      throw createError("Unable to delete photo", 400);
+    }
+    try {
+      await cloudinary.uploader.destroy(photo?.publicId);
+    } catch (error) {
+      throw createError("Unable to delete from cloudinary", 400);
+    }
+    const deletedPhoto = await Photo.findByIdAndDelete(photo._id);
+
+    return deletedPhoto;
   } catch (error) {
     throw error;
   }

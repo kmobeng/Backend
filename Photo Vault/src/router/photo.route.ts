@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { protect } from "../controller/auth.controller";
 import {
+  deletePhoto,
   getAllPhotos,
   getSinglePhoto,
   updatePhoto,
@@ -20,7 +21,8 @@ router
 router
   .route("/photos/:photoId")
   .get(protect, getSinglePhoto)
-  .patch(protect, updatePhoto);
+  .patch(protect, updatePhoto)
+  .delete(protect, deletePhoto);
 
 router.route("/:username").get(protect, getAllPhotos);
 

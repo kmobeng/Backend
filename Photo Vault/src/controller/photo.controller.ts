@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { cloudinary } from "../config/db.config";
 import {
+  deletePhotoService,
   getAllPhotosService,
   getSinglePhotoService,
   updatePhotoService,
@@ -116,6 +117,22 @@ export const updatePhoto = async (
     );
 
     res.status(200).json({ status: "success", data: photo });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deletePhoto = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { photoId } = req.params;
+
+    const photo = await deletePhotoService(photoId, req.user._id.toString());
+
+    res.status(200).json({ status: "success" });
   } catch (error) {
     next(error);
   }
