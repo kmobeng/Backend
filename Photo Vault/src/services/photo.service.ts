@@ -1,4 +1,4 @@
-import mongoose, { ObjectId, Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import Photo from "../model/photo.model";
 import { createError } from "../utils/error.util";
 import { cloudinary, RedisClient } from "../config/db.config";
@@ -31,10 +31,12 @@ export const uploadPhotoService = async (
       album: albumId,
     });
 
-    RedisClient.del(`photos:${userId}`);
+    const populatedPhoto: any = await photo.populate("user");
+
+    RedisClient.del(`photos:${userId}:${populatedPhoto.user.username}`);
 
     if (!photo) {
-      createError("Unable to create photo", 400);
+      throw createError("Unable to create photo", 400);
     }
     return photo;
   } catch (error) {
@@ -54,8 +56,7 @@ export const getAllPhotosService = async (
   queryString: any
 ) => {
   const userKey = `user:${username}`;
-  const queryKey = JSON.stringify(queryString || {});
-  const photosKey = `photos:${userId}:${username}:${queryKey}`;
+  const photosKey = `photos:${userId}:${username}`;
 
   try {
     const cachedPhotos = await RedisClient.get(photosKey);
@@ -109,10 +110,7 @@ export const getAllPhotosService = async (
   }
 };
 
-export const getSinglePhotoService = async (
-  photoId: string,
-  userId: string
-) => {
+export const getSinglePhotoService = async (photoId: any, userId: string) => {
   const photoKey = `photo:${userId}:${photoId}`;
 
   try {
@@ -128,9 +126,43 @@ export const getSinglePhotoService = async (
       throw createError("Invalid photo ID", 400);
     }
 
-    const photo = await Photo.findById({ photoId });
-    if (photo === null) {
+    const photo = await Photo.findOne({ _id: photoId }).populate("user");
+    if (photo !== null) {
       RedisClient.setex(photoKey, 3600, JSON.stringify(photo));
+    }
+
+    if (
+      photo?.user._id.toString() !== userId &&
+      photo?.visibility === "private"
+    ) {
+      return null;
+    }
+
+    return photo;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updatePhotoService = async (
+  title: string,
+  visibility: string,
+  photoId: any,
+  userId: string
+) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(photoId)) {
+      throw createError("Invalid photo ID", 400);
+    }
+
+    const photo = await Photo.findOneAndUpdate(
+      { user: userId, _id: photoId },
+      { $set: { title, visibility } },
+      { new: true, runValidators: true }
+    );
+
+    if (!photo) {
+      throw createError("Unable to update photo", 400);
     }
     return photo;
   } catch (error) {

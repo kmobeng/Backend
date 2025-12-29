@@ -3,6 +3,7 @@ import { cloudinary } from "../config/db.config";
 import {
   getAllPhotosService,
   getSinglePhotoService,
+  updatePhotoService,
   uploadPhotoService,
 } from "../services/photo.service";
 import { createError } from "../utils/error.util";
@@ -87,8 +88,30 @@ export const getSinglePhoto = async (
     if (!photoId) {
       throw createError("No photo id provided", 400);
     }
-    const photo = await getSinglePhotoService(
-      photoId!.toString(),
+    const photo = await getSinglePhotoService(photoId, req.user._id.toString());
+
+    if (photo === null) {
+      return res.status(400).json({ message: "No photo found" });
+    }
+    res.status(200).json({ status: "success", data: photo });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePhoto = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { title, visibility } = req.body;
+    const { photoId } = req.params;
+
+    const photo = await updatePhotoService(
+      title,
+      visibility,
+      photoId,
       req.user._id.toString()
     );
 

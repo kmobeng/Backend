@@ -3,6 +3,7 @@ import { protect } from "../controller/auth.controller";
 import {
   getAllPhotos,
   getSinglePhoto,
+  updatePhoto,
   uploadPhoto,
 } from "../controller/photo.controller";
 import multer from "multer";
@@ -16,8 +17,11 @@ router
   .post(protect, upload.single("photo"), uploadPhoto)
   .get(protect, getAllPhotos);
 
-router.route("/:username").get(protect, getAllPhotos);
+router
+  .route("/photos/:photoId")
+  .get(protect, getSinglePhoto)
+  .patch(protect, updatePhoto);
 
-router.route("/photos/:photoId").get(protect, getSinglePhoto);
+router.route("/:username").get(protect, getAllPhotos);
 
 export default router;
