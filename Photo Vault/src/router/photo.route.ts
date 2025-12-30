@@ -19,11 +19,9 @@ router
   .get(protect, getAllPhotos);
 
 router
-  .route("/photos/:photoId")
+  .route("/:photoId")
   .get(protect, getSinglePhoto)
   .patch(protect, updatePhoto)
   .delete(protect, deletePhoto);
-
-router.route("/:username").get(protect, getAllPhotos);
 
 export default router;

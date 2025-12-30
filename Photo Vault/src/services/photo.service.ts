@@ -128,7 +128,7 @@ export const getSinglePhotoService = async (photoId: any, userId: string) => {
       throw createError("Invalid photo ID", 400);
     }
 
-    const photo = await Photo.findOne({ _id: photoId }).populate("user");
+    const photo = await Photo.findOne({ _id: photoId });
     if (photo !== null) {
       RedisClient.setex(photoKey, 3600, JSON.stringify(photo));
     }
@@ -157,15 +157,20 @@ export const updatePhotoService = async (
       throw createError("Invalid photo ID", 400);
     }
 
-    const photo = await Photo.findOneAndUpdate(
+    const photo: any = await Photo.findOneAndUpdate(
       { user: userId, _id: photoId },
       { $set: { title, visibility } },
       { new: true, runValidators: true }
-    );
-
+    ).populate("user");
     if (!photo) {
       throw createError("Unable to update photo", 400);
     }
+    const photosKey = `photos:${userId}:${photo.user.username}`;
+    const photoKey = `photo:${userId}:${photoId}`;
+
+    RedisClient.del(photosKey);
+    RedisClient.del(photoKey);
+
     return photo;
   } catch (error) {
     throw error;
@@ -177,17 +182,27 @@ export const deletePhotoService = async (photoId: any, userId: string) => {
     if (!mongoose.Types.ObjectId.isValid(photoId)) {
       throw createError("Invalid photo ID", 400);
     }
-    const photo: any = await Photo.findOne({ user: userId, _id: photoId });
+    const photo: any = await Photo.findOne({
+      user: userId,
+      _id: photoId,
+    }).populate("user");
     if (!photo) {
       throw createError("Unable to delete photo", 400);
     }
+
+    const photosKey = `photos:${userId}:${photo.user.username}`;
+    const photoKey = `photo:${userId}:${photoId}`;
+
     try {
       await cloudinary.uploader.destroy(photo?.publicId);
     } catch (error) {
       throw createError("Unable to delete from cloudinary", 400);
     }
-    const deletedPhoto = await Photo.findByIdAndDelete(photo._id);
 
+    RedisClient.del(photosKey);
+    RedisClient.del(photoKey);
+
+    const deletedPhoto = await Photo.findByIdAndDelete(photo._id);
     return deletedPhoto;
   } catch (error) {
     throw error;
