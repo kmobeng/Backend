@@ -10,6 +10,8 @@ const AlbumSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+AlbumSchema.index({ user: 1, createdAt: -1 });
+
 type IAlbum = InferSchemaType<typeof AlbumSchema>;
 
 const Album = model<IAlbum>("Album", AlbumSchema);

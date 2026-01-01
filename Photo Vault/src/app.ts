@@ -17,7 +17,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.use("/api/photo-vault/:username/photo", photoRoute);
 app.use("/api/photo-vault/user", userRoute);
-app.use("/api/photo-vault/album", albumRoute);
+app.use("/api/photo-vault/:username/album", albumRoute);
 
 app.use(errorHandler);
 
