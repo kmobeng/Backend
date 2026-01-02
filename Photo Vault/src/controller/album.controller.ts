@@ -26,7 +26,7 @@ export const createAlbum = async (
     next(error);
   }
 };
-// CHECK UPLOAD PHOTO AND CREATE ALBUM CODE FOR CHECKING WHETHER THE ACCOUNT BELONG TO THE USER
+
 export const getAllAlbums = async (
   req: Request,
   res: Response,
@@ -34,12 +34,18 @@ export const getAllAlbums = async (
 ) => {
   try {
     const { username } = req.params;
-    const albums = await getAllAlbumsService(username as string);
+    const albums = await getAllAlbumsService(
+      username as string,
+      req.user._id.toString(),
+      req.query
+    );
     if (albums.length < 1) {
       return res.status(400).json({ message: "No albums found" });
     }
 
-    res.status(200).json({ status: "success", data: albums });
+    res
+      .status(200)
+      .json({ status: "success", result: albums.length, data: albums });
   } catch (error) {
     next(error);
   }
