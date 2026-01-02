@@ -57,7 +57,7 @@ export const getAllPhotosService = async (
   userId: string,
   queryString: any
 ) => {
-  const userKey = `user:${username}`;
+  const userKey = `user:${userId}:${username}`;
   const photosKey = `photos:${userId}:${username}`;
 
   try {

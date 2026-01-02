@@ -2,13 +2,13 @@ import { RedisClient } from "../config/db.config";
 import Album from "../model/album.model";
 import { createError } from "../utils/error.util";
 import User from "../model/user.model";
+import APIFeatures from "../utils/APIFeatures.util";
 
 export const createAlbumService = async (
   name: string,
   userId: string,
   username: string
 ) => {
-  const albumKey = `albumm:${userId}`;
   try {
     const user = await User.findOne({ username });
     if (!user) {
@@ -27,25 +27,42 @@ export const createAlbumService = async (
   }
 };
 
-export const getAllAlbumsService = async (username: string) => {
-  const userKey = `username:${username}`;
+export const getAllAlbumsService = async (
+  username: string,
+  userId: string,
+  queryString: any
+) => {
+  const userKey = `username:${userId}:${username}`;
+  const albumsKey = `album:${userId}:${username}`;
   try {
+    const cachedAlbums = await RedisClient.get(albumsKey);
+
+    if (cachedAlbums) {
+      return JSON.parse(cachedAlbums);
+    }
+
     let user;
     const cachedUser = await RedisClient.get(userKey);
     if (cachedUser) {
       user = JSON.parse(cachedUser);
     } else {
-      user = await User.findOne({ username });
-      if (user) {
-        await RedisClient.set(userKey, JSON.stringify(user));
+      user = await User.findOne({ username }).select("_id username").lean();
+      if (!user) {
+        throw createError("Error fetching albums", 400);
       }
+      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
     }
 
-    if (!user) {
-      throw createError("User not found", 400);
+    const features = new APIFeatures(Album.find(), queryString)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+    const albums = await features.query;
+
+    if (albums.length > 0) {
+      await RedisClient.setex(albumsKey, 3600, JSON.stringify(albums));
     }
-    console.log(user);
-    const albums = await Album.find({ user: user?._id });
 
     return albums;
   } catch (error) {
