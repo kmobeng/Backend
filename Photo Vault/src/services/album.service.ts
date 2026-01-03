@@ -3,6 +3,7 @@ import Album from "../model/album.model";
 import { createError } from "../utils/error.util";
 import User from "../model/user.model";
 import APIFeatures from "../utils/APIFeatures.util";
+import mongoose from "mongoose";
 
 export const createAlbumService = async (
   name: string,
@@ -17,10 +18,12 @@ export const createAlbumService = async (
     if (user._id.toString() !== userId) {
       throw createError("Error occured when creating photo", 400);
     }
-    const album = await Album.create({ name, user: userId });
+    const album = await Album.create({ name, user: user._id });
     if (!album) {
       throw createError("Unable to create album", 400);
     }
+
+    RedisClient.del(`album:${userId}:${username}`);
     return album;
   } catch (error) {
     throw error;
@@ -53,7 +56,10 @@ export const getAllAlbumsService = async (
       await RedisClient.setex(userKey, 86400, JSON.stringify(user));
     }
 
-    const features = new APIFeatures(Album.find(), queryString)
+    const features = new APIFeatures(
+      Album.find({ user: user._id }),
+      queryString
+    )
       .filter()
       .sort()
       .limitFields()
@@ -65,6 +71,46 @@ export const getAllAlbumsService = async (
     }
 
     return albums;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getSingleAlbumService = async (
+  albumId: string,
+  userId: string,
+  username: string
+) => {
+  const userKey = `username:${userId}:${username}`;
+  const albumKey = `album:${userId}:${albumId}:`;
+  try {
+    const cachedAlbum = await RedisClient.get(albumKey);
+
+    if (cachedAlbum) {
+      return JSON.parse(cachedAlbum);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(albumId)) {
+      throw createError("Invalid album ID", 400);
+    }
+
+    let user;
+    const cachedUser = await RedisClient.get(userKey);
+    if (cachedUser) {
+      user = JSON.parse(cachedUser);
+    } else {
+      user = await User.findOne({ username });
+      RedisClient.setex(userKey, 86400, JSON.stringify(user));
+    }
+    if (user._id !== userId) {
+      throw createError("Error while fetching photo", 400);
+    }
+    const album = await Album.findOne({ _id: albumId });
+
+    if (album !== null) {
+      RedisClient.setex(albumKey, 3600, JSON.stringify(album));
+    }
+    return album;
   } catch (error) {
     throw error;
   }
