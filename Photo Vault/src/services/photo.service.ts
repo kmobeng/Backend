@@ -199,11 +199,15 @@ export const updatePhotoService = async (
     if (!photo) {
       throw createError("Unable to update photo", 400);
     }
-    const photosKey = `photos:${userId}:${photo.user.username}`;
-    const photoKey = `photo:${userId}:${photoId}`;
+    const photosKey = await RedisClient.keys(`photos:*:${photo.user.username}`);
+    const photoKey = await RedisClient.keys(`photo:*:${photoId}`);
 
-    RedisClient.del(photosKey);
-    RedisClient.del(photoKey);
+    if (photosKey.length !== 0) {
+      await RedisClient.del(...photosKey);
+    }
+    if (photoKey.length !== 0) {
+      await RedisClient.del(...photoKey);
+    }
 
     return photo;
   } catch (error) {
@@ -224,19 +228,24 @@ export const deletePhotoService = async (photoId: any, userId: string) => {
       throw createError("Unable to delete photo", 400);
     }
 
-    const photosKey = `photos:${userId}:${photo.user.username}`;
-    const photoKey = `photo:${userId}:${photoId}`;
-
     try {
       await cloudinary.uploader.destroy(photo?.publicId);
     } catch (error) {
       throw createError("Unable to delete from cloudinary", 400);
     }
 
-    RedisClient.del(photosKey);
-    RedisClient.del(photoKey);
+    const photosKey = await RedisClient.keys(`photos:*:${photo.user.username}`);
+    const photoKey = await RedisClient.keys(`photo:*:${photoId}`);
+
+    if (photosKey.length !== 0) {
+      await RedisClient.del(...photosKey);
+    }
+    if (photoKey.length !== 0) {
+      await RedisClient.del(...photoKey);
+    }
 
     const deletedPhoto = await Photo.findByIdAndDelete(photo._id);
+
     return deletedPhoto;
   } catch (error) {
     throw error;
