@@ -102,7 +102,7 @@ UserSchema.methods.changedPasswordAfter = function (JWTTimestamp: any) {
   return false;
 };
 
-UserSchema.index({ username: 1, createdAt: -1 });
+UserSchema.index({ username: 1 });
 
 const User = model<IUser>("User", UserSchema);
 

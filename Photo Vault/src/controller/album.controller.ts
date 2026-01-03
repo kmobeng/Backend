@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import {
   createAlbumService,
   getAllAlbumsService,
+  getSingleAlbumService,
 } from "../services/album.service";
 import { createError } from "../utils/error.util";
 
@@ -46,6 +47,37 @@ export const getAllAlbums = async (
     res
       .status(200)
       .json({ status: "success", result: albums.length, data: albums });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSingleAlbum = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { username } = req.params;
+    if (!username) {
+      throw createError("No username provided in url", 400);
+    }
+
+    const { albumId } = req.params;
+    if (!albumId) {
+      throw createError("No album id provided", 400);
+    }
+
+    const album = await getSingleAlbumService(
+      albumId,
+      req.user._id.toString(),
+      username
+    );
+    if (album === null) {
+      return res.status(400).json({ message: "No album found" });
+    }
+
+    res.status(200).json({ status: "success", data: { album } });
   } catch (error) {
     next(error);
   }

@@ -11,7 +11,7 @@ import multer from "multer";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router
   .route("/")

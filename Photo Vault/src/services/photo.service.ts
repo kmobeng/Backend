@@ -1,19 +1,20 @@
 import mongoose, { Types } from "mongoose";
-import Photo, { IPhoto } from "../model/photo.model";
+import Photo from "../model/photo.model";
 import { createError } from "../utils/error.util";
 import { cloudinary, RedisClient } from "../config/db.config";
 import User from "../model/user.model";
 import APIFeatures from "../utils/APIFeatures.util";
 
 export const uploadPhotoService = async (
+  username: string,
   title: string,
   description: string,
   visibility: string,
-  url: string,
   userId: string,
-  albumId: string,
-  publicId: string
+  photo: any,
+  albumId?: any
 ) => {
+  let publicId;
   try {
     if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
       throw createError("Invalid user id", 400);
@@ -21,32 +22,65 @@ export const uploadPhotoService = async (
     if (albumId && !mongoose.Types.ObjectId.isValid(albumId)) {
       throw createError("Invalid album id", 400);
     }
-    const photo = await Photo.create({
+
+    if (!photo || !photo.buffer) {
+      throw createError("No photo file provided", 400);
+    }
+    const user = await User.findOne({ username });
+    if (!user) {
+      throw createError("Error uploading photo", 400);
+    }
+    if (user._id.toString() !== userId) {
+      throw createError("Error uploading photo", 400);
+    }
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "photo-vault",
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        }
+      );
+
+      stream.end(photo.buffer);
+    });
+
+    const url = uploadResult.secure_url;
+    publicId = uploadResult.public_id;
+
+    const createdPhoto = await Photo.create({
       title,
       description,
       visibility,
       url,
       publicId,
-      user: userId,
+      user: user._id,
       album: albumId,
     });
 
-    const populatedPhoto: any = await photo.populate("user");
-
-    RedisClient.del(`photos:${userId}:${populatedPhoto.user.username}`);
+    const keys = await RedisClient.keys(`photos:*:${username}`);
+    if (keys.length > 0) {
+      await RedisClient.del(...keys);
+    }
 
     if (!photo) {
       throw createError("Unable to create photo", 400);
     }
-    return photo;
+    return createdPhoto;
   } catch (error) {
-    try {
-      await cloudinary.uploader.destroy(publicId);
-    } catch (deleteError) {
-      throw createError(
-        "Unable to cleanup cloudinary after upload photo failed",
-        400
-      );
+    if (publicId) {
+      try {
+        await cloudinary.uploader.destroy(publicId);
+        console.log("Cloudinary cleanup successful");
+      } catch (deleteError) {
+        console.error("Failed to cleanup Cloudinary:", deleteError);
+      }
     }
     throw error;
   }
