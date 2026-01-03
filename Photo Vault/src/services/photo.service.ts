@@ -4,6 +4,7 @@ import { createError } from "../utils/error.util";
 import { cloudinary, RedisClient } from "../config/db.config";
 import User from "../model/user.model";
 import APIFeatures from "../utils/APIFeatures.util";
+import { create } from "node:domain";
 
 export const uploadPhotoService = async (
   username: string,
@@ -146,7 +147,11 @@ export const getAllPhotosService = async (
   }
 };
 
-export const getSinglePhotoService = async (photoId: any, userId: string) => {
+export const getSinglePhotoService = async (
+  photoId: any,
+  userId: string,
+  username: string
+) => {
   const photoKey = `photo:${userId}:${photoId}`;
 
   try {
@@ -162,8 +167,18 @@ export const getSinglePhotoService = async (photoId: any, userId: string) => {
       throw createError("Invalid photo ID", 400);
     }
 
-    const photo = await Photo.findOne({ _id: photoId });
-    if (photo?.user.toString() !== userId && photo?.visibility === "private") {
+    const photo = await Photo.findOne({ _id: photoId }).populate({
+      path: "user",
+      select: "_id username",
+    });
+    const populatedUser = photo?.user as any;
+    if (username !== populatedUser.username) {
+      throw createError("Error while fetching photo", 400);
+    }
+    if (
+      photo?.user._id.toString() !== userId &&
+      photo?.visibility === "private"
+    ) {
       return null;
     }
     if (photo !== null) {
@@ -187,11 +202,13 @@ export const updatePhotoService = async (
       throw createError("Invalid photo ID", 400);
     }
 
+    // RedisClient.get(userKey);
+
     const photo: any = await Photo.findOneAndUpdate(
       { user: userId, _id: photoId },
       { $set: { title, visibility } },
       { new: true, runValidators: true }
-    ).populate("user");
+    );
     if (!photo) {
       throw createError("Unable to update photo", 400);
     }

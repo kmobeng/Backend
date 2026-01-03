@@ -70,7 +70,15 @@ export const getSinglePhoto = async (
     if (!photoId) {
       throw createError("No photo id provided", 400);
     }
-    const photo = await getSinglePhotoService(photoId, req.user._id.toString());
+    const { username } = req.params;
+    if (!username) {
+      throw createError("No photo id provided", 400);
+    }
+    const photo = await getSinglePhotoService(
+      photoId,
+      req.user._id.toString(),
+      username
+    );
 
     if (photo === null) {
       return res.status(400).json({ message: "No photo found" });

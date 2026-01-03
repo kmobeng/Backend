@@ -104,3 +104,26 @@ export const getSingleAlbumService = async (
     throw error;
   }
 };
+
+export const updateSingleAlbumService = async (
+  albumId: string,
+  userId: string,
+  name: string
+) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(albumId)) {
+      throw createError("Invalid album ID", 400);
+    }
+    const album = await Album.findOneAndUpdate(
+      { _id: albumId, user: userId },
+      { $set: { name } },
+      { new: true, runValidators: true }
+    );
+
+    if (!album) {
+      throw createError("Error while updating album", 400);
+    }
+  } catch (error) {
+    throw error;
+  }
+};
