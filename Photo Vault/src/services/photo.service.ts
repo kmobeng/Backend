@@ -163,15 +163,11 @@ export const getSinglePhotoService = async (photoId: any, userId: string) => {
     }
 
     const photo = await Photo.findOne({ _id: photoId });
+    if (photo?.user.toString() !== userId && photo?.visibility === "private") {
+      return null;
+    }
     if (photo !== null) {
       RedisClient.setex(photoKey, 3600, JSON.stringify(photo));
-    }
-
-    if (
-      photo?.user._id.toString() !== userId &&
-      photo?.visibility === "private"
-    ) {
-      return null;
     }
 
     return photo;

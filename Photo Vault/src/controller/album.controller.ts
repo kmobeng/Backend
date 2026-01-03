@@ -58,21 +58,12 @@ export const getSingleAlbum = async (
   next: NextFunction
 ) => {
   try {
-    const { username } = req.params;
-    if (!username) {
-      throw createError("No username provided in url", 400);
-    }
-
     const { albumId } = req.params;
     if (!albumId) {
       throw createError("No album id provided", 400);
     }
 
-    const album = await getSingleAlbumService(
-      albumId,
-      req.user._id.toString(),
-      username
-    );
+    const album = await getSingleAlbumService(albumId, req.user._id.toString());
     if (album === null) {
       return res.status(400).json({ message: "No album found" });
     }

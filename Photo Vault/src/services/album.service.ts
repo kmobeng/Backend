@@ -22,8 +22,10 @@ export const createAlbumService = async (
     if (!album) {
       throw createError("Unable to create album", 400);
     }
-
-    RedisClient.del(`album:${userId}:${username}`);
+    const albumsKeys = await RedisClient.keys(`album:*:${username}`);
+    if (albumsKeys.length !== 0) {
+      await RedisClient.del(...albumsKeys);
+    }
     return album;
   } catch (error) {
     throw error;
@@ -78,10 +80,8 @@ export const getAllAlbumsService = async (
 
 export const getSingleAlbumService = async (
   albumId: string,
-  userId: string,
-  username: string
+  userId: string
 ) => {
-  const userKey = `username:${userId}:${username}`;
   const albumKey = `album:${userId}:${albumId}:`;
   try {
     const cachedAlbum = await RedisClient.get(albumKey);
@@ -94,17 +94,6 @@ export const getSingleAlbumService = async (
       throw createError("Invalid album ID", 400);
     }
 
-    let user;
-    const cachedUser = await RedisClient.get(userKey);
-    if (cachedUser) {
-      user = JSON.parse(cachedUser);
-    } else {
-      user = await User.findOne({ username });
-      RedisClient.setex(userKey, 86400, JSON.stringify(user));
-    }
-    if (user._id !== userId) {
-      throw createError("Error while fetching photo", 400);
-    }
     const album = await Album.findOne({ _id: albumId });
 
     if (album !== null) {
