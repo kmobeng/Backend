@@ -4,7 +4,6 @@ import { createError } from "../utils/error.util";
 import { cloudinary, RedisClient } from "../config/db.config";
 import User from "../model/user.model";
 import APIFeatures from "../utils/APIFeatures.util";
-import { create } from "node:domain";
 
 export const uploadPhotoService = async (
   username: string,
@@ -195,17 +194,29 @@ export const updatePhotoService = async (
   title: string,
   visibility: string,
   photoId: any,
-  userId: string
+  userId: string,
+  username: string
 ) => {
+  const userKey = `user:${userId}:${username}`;
+
   try {
     if (!mongoose.Types.ObjectId.isValid(photoId)) {
       throw createError("Invalid photo ID", 400);
     }
+    let user;
+    const cachedUser = await RedisClient.get(userKey);
+    if (cachedUser) {
+      user = JSON.parse(cachedUser);
+    } else {
+      user = await User.findOne({ _id: userId }).select("_id username");
+      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
+    }
 
-    // RedisClient.get(userKey);
-
+    if (username !== user.username) {
+      throw createError("Error while updating photo", 400);
+    }
     const photo: any = await Photo.findOneAndUpdate(
-      { user: userId, _id: photoId },
+      { user: user._id, _id: photoId },
       { $set: { title, visibility } },
       { new: true, runValidators: true }
     );
@@ -228,15 +239,32 @@ export const updatePhotoService = async (
   }
 };
 
-export const deletePhotoService = async (photoId: any, userId: string) => {
+export const deletePhotoService = async (
+  photoId: any,
+  userId: string,
+  username: string
+) => {
+  const userKey = `user:${userId}:${username}`;
   try {
     if (!mongoose.Types.ObjectId.isValid(photoId)) {
       throw createError("Invalid photo ID", 400);
     }
+    let user;
+    const cachedUser = await RedisClient.get(userKey);
+    if (cachedUser) {
+      user = JSON.parse(cachedUser);
+    } else {
+      user = await User.findOne({ _id: userId }).select("_id username");
+      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
+    }
+    if (username !== user.username) {
+      throw createError("Error while deleting photo", 400);
+    }
+
     const photo: any = await Photo.findOne({
       user: userId,
       _id: photoId,
-    }).populate("user");
+    }).populate({ path: "user", select: "_id username" });
     if (!photo) {
       throw createError("Unable to delete photo", 400);
     }

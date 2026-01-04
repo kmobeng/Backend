@@ -97,12 +97,17 @@ export const updatePhoto = async (
   try {
     const { title, visibility } = req.body;
     const { photoId } = req.params;
+    const { username } = req.params;
+    if (!photoId || !username) {
+      throw createError("No username or photoID provided", 400);
+    }
 
     const photo = await updatePhotoService(
       title,
       visibility,
       photoId,
-      req.user._id.toString()
+      req.user._id.toString(),
+      username
     );
 
     res.status(200).json({ status: "success", data: photo });
@@ -117,9 +122,16 @@ export const deletePhoto = async (
   next: NextFunction
 ) => {
   try {
-    const { photoId } = req.params;
+    const { photoId, username } = req.params;
+    if (!username || !photoId) {
+      throw createError("Please provide username and photoId", 400);
+    }
 
-    const photo = await deletePhotoService(photoId, req.user._id.toString());
+    const photo = await deletePhotoService(
+      photoId,
+      req.user._id.toString(),
+      username as string
+    );
 
     res.status(200).json({ status: "success" });
   } catch (error) {
