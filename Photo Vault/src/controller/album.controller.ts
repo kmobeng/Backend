@@ -3,6 +3,7 @@ import {
   createAlbumService,
   getAllAlbumsService,
   getSingleAlbumService,
+  updateSingleAlbumService,
 } from "../services/album.service";
 import { createError } from "../utils/error.util";
 
@@ -58,17 +59,48 @@ export const getSingleAlbum = async (
   next: NextFunction
 ) => {
   try {
-    const { albumId } = req.params;
-    if (!albumId) {
-      throw createError("No album id provided", 400);
+    const { albumId, username } = req.params;
+    if (!albumId || !username) {
+      throw createError("No album id or username provided", 400);
     }
 
-    const album = await getSingleAlbumService(albumId, req.user._id.toString());
+    const album = await getSingleAlbumService(
+      albumId,
+      req.user._id.toString(),
+      username
+    );
     if (album === null) {
       return res.status(400).json({ message: "No album found" });
     }
 
     res.status(200).json({ status: "success", data: { album } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSingleAlbum = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { username, albumId } = req.params;
+    if (!username || !albumId) {
+      throw createError("No username or album ID provided", 400);
+    }
+    const { name } = req.body;
+    const album = await updateSingleAlbumService(
+      albumId,
+      req.user._id.toString(),
+      name,
+      username
+    );
+    if (album === null) {
+      res.status(400).json({ message: "No album found" });
+    }
+
+    res.status(200).json({ status: "success", data: album });
   } catch (error) {
     next(error);
   }

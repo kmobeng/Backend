@@ -170,6 +170,9 @@ export const getSinglePhotoService = async (
       path: "user",
       select: "_id username",
     });
+    if (!photo) {
+      throw createError("Error while fetching photo", 400);
+    }
     const populatedUser = photo?.user as any;
     if (username !== populatedUser.username) {
       throw createError("Error while fetching photo", 400);
@@ -223,7 +226,7 @@ export const updatePhotoService = async (
     if (!photo) {
       throw createError("Unable to update photo", 400);
     }
-    const photosKey = await RedisClient.keys(`photos:*:${photo.user.username}`);
+    const photosKey = await RedisClient.keys(`photos:*:${user.username}`);
     const photoKey = await RedisClient.keys(`photo:*:${photoId}`);
 
     if (photosKey.length !== 0) {

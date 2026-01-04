@@ -77,7 +77,7 @@ export const getSinglePhoto = async (
     const photo = await getSinglePhotoService(
       photoId,
       req.user._id.toString(),
-      username
+      username as string
     );
 
     if (photo === null) {

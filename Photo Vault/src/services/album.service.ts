@@ -37,8 +37,8 @@ export const getAllAlbumsService = async (
   userId: string,
   queryString: any
 ) => {
-  const userKey = `username:${userId}:${username}`;
-  const albumsKey = `album:${userId}:${username}`;
+  const userKey = `user:${userId}:${username}`;
+  const albumsKey = `albums:${userId}:${username}`;
   try {
     const cachedAlbums = await RedisClient.get(albumsKey);
 
@@ -53,7 +53,7 @@ export const getAllAlbumsService = async (
     } else {
       user = await User.findOne({ username }).select("_id username").lean();
       if (!user) {
-        throw createError("Error fetching albums", 400);
+        throw createError("No user found", 400);
       }
       await RedisClient.setex(userKey, 86400, JSON.stringify(user));
     }
@@ -80,7 +80,8 @@ export const getAllAlbumsService = async (
 
 export const getSingleAlbumService = async (
   albumId: string,
-  userId: string
+  userId: string,
+  username: string
 ) => {
   const albumKey = `album:${userId}:${albumId}:`;
   try {
@@ -94,8 +95,15 @@ export const getSingleAlbumService = async (
       throw createError("Invalid album ID", 400);
     }
 
-    const album = await Album.findOne({ _id: albumId });
+    const album = await Album.findOne({ _id: albumId }).populate({
+      path: "user",
+      select: "_id username",
+    });
+    const populatedUser = album?.user as any;
 
+    if (username !== populatedUser.username) {
+      throw createError("Error while fetching photo", 400);
+    }
     if (album !== null) {
       RedisClient.setex(albumKey, 3600, JSON.stringify(album));
     }
@@ -108,14 +116,30 @@ export const getSingleAlbumService = async (
 export const updateSingleAlbumService = async (
   albumId: string,
   userId: string,
-  name: string
+  name: string,
+  username: string
 ) => {
+  const userKey = `user:${userId}:${username}`;
   try {
     if (!mongoose.Types.ObjectId.isValid(albumId)) {
       throw createError("Invalid album ID", 400);
     }
+
+    let user;
+    const cachedUser = await RedisClient.get(userKey);
+    if (cachedUser) {
+      user = JSON.parse(cachedUser);
+    } else {
+      user = await User.findOne({ _id: userId }).select("_id username");
+      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
+    }
+
+    if (username !== user.username) {
+      throw createError("Error while updating photo", 400);
+    }
+
     const album = await Album.findOneAndUpdate(
-      { _id: albumId, user: userId },
+      { _id: albumId, user: user._id },
       { $set: { name } },
       { new: true, runValidators: true }
     );
@@ -123,6 +147,65 @@ export const updateSingleAlbumService = async (
     if (!album) {
       throw createError("Error while updating album", 400);
     }
+    const albumsKeys = await RedisClient.keys(`albums:*:${user.username}`);
+    const albumKey = await RedisClient.keys(`album:*:${albumId}`);
+
+    if (albumsKeys.length !== 0) {
+      await RedisClient.del(...albumsKeys);
+    }
+    if (albumKey.length !== 0) {
+      await RedisClient.del(...albumKey);
+    }
+    return album;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteSingleAlbumService = async (
+  albumId: string,
+  userId: string,
+  username: string
+) => {
+  const userKey = `user:${userId}:${username}`;
+  try {
+    if (!mongoose.Types.ObjectId.isValid(albumId)) {
+      throw createError("Invalid user ID", 400);
+    }
+
+    let user;
+    const cachedUser = await RedisClient.get(userKey);
+    if (cachedUser) {
+      user = JSON.parse(cachedUser);
+    } else {
+      user = await User.findOne({ _id: userId }).select("_id username");
+      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
+    }
+    if (username !== user.username) {
+      throw createError("Error while deleting photo", 400);
+    }
+
+    const album: any = await Album.findOne({
+      user: userId,
+      _id: albumId,
+    }).populate({ path: "user", select: "_id username" });
+    if (!album) {
+      throw createError("Unable to delete album", 400);
+    }
+
+    const albumsKeys = await RedisClient.keys(`albums:*:${user.username}`);
+    const albumKeys = await RedisClient.keys(`album:*:${albumId}`);
+
+    if (albumsKeys.length !== 0) {
+      await RedisClient.del(...albumsKeys);
+    }
+    if (albumKeys.length !== 0) {
+      await RedisClient.del(...albumKeys);
+    }
+
+    const deletedPhoto = await Album.findByIdAndDelete(album._id);
+
+    return deletedPhoto;
   } catch (error) {
     throw error;
   }
