@@ -106,3 +106,14 @@ export const protect = async (
     next(error);
   }
 };
+
+export const restrictTo = (...roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!roles.includes(req.user.role)) {
+      return next(
+        createError("You do not have permission to accesss this action", 403)
+      );
+    }
+    next();
+  };
+};

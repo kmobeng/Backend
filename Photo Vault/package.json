@@ -23,6 +23,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.2",
     "morgan": "^1.10.1",
+    "msgpack-lite": "^0.1.26",
     "multer": "^2.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
@@ -33,6 +34,7 @@
     "@types/express": "^5.0.6",
     "@types/mongoose": "^5.11.96",
     "@types/morgan": "^1.9.10",
+    "@types/msgpack-lite": "^0.1.12",
     "@types/multer": "^2.0.0",
     "@types/node": "^25.0.3",
     "nodemon": "^3.1.11"

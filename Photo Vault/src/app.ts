@@ -3,7 +3,7 @@ import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 import { errorHandler } from "./middleware/errorHandler.middleware";
-import userRoute from "./router/auth.route";
+import userRoute from "./router/user.route";
 import photoRoute from "./router/photo.route";
 import albumRoute from "./router/album.route";
 
