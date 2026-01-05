@@ -7,19 +7,22 @@ import {
   getSingleAlbum,
   updateSingleAlbum,
 } from "../controller/album.controller";
+import { apiLimiter } from "../middleware/limiter.middleware";
 
 const router = Router();
+router.use(protect);
+router.use(apiLimiter);
 
-router.route("/album").post(protect, createAlbum).get(protect, getAllAlbums);
+router.route("/album").post(createAlbum).get(getAllAlbums);
 
 router
   .route("/album/:albumId")
-  .get(protect, getSingleAlbum)
-  .patch(protect, updateSingleAlbum)
-  .delete(protect, deleteSingleAlbum);
+  .get(getSingleAlbum)
+  .patch(updateSingleAlbum)
+  .delete(deleteSingleAlbum);
 
-router.route("/:userId/album").get(protect, getAllAlbums);
+router.route("/:userId/album").get(getAllAlbums);
 
-router.route("/:userId/album/:albumId").get(protect, getSingleAlbum);
+router.route("/:userId/album/:albumId").get(getSingleAlbum);
 
 export default router;

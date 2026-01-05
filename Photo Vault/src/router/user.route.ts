@@ -1,18 +1,12 @@
 import { Router } from "express";
-import {
-  login,
-  protect,
-  restrictTo,
-  signUp,
-} from "../controller/auth.controller";
+import { protect, restrictTo } from "../controller/auth.controller";
 import { getAllUsers } from "../controller/user.controller";
+import { apiLimiter } from "../middleware/limiter.middleware";
 
 const router = Router();
 
-router.post("/signup", signUp);
-router.post("/login", login);
-
 router.use(protect);
+router.use(apiLimiter);
 
 router.use(restrictTo("admin"));
 router.route("/").get(getAllUsers);

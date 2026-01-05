@@ -8,11 +8,13 @@ import {
   uploadPhoto,
 } from "../controller/photo.controller";
 import multer from "multer";
+import { apiLimiter } from "../middleware/limiter.middleware";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
 router.use(protect);
+router.use(apiLimiter);
 
 router
   .route("/photo")
