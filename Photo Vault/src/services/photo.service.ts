@@ -6,7 +6,6 @@ import User from "../model/user.model";
 import APIFeatures from "../utils/APIFeatures.util";
 
 export const uploadPhotoService = async (
-  username: string,
   title: string,
   description: string,
   visibility: string,
@@ -26,13 +25,7 @@ export const uploadPhotoService = async (
     if (!photo || !photo.buffer) {
       throw createError("No photo file provided", 400);
     }
-    const user = await User.findOne({ username });
-    if (!user) {
-      throw createError("Error uploading photo", 400);
-    }
-    if (user._id.toString() !== userId) {
-      throw createError("Error uploading photo", 400);
-    }
+
     const uploadResult = await new Promise<any>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
@@ -60,16 +53,16 @@ export const uploadPhotoService = async (
       visibility,
       url,
       publicId,
-      user: user._id,
+      user: userId,
       album: albumId,
     });
 
-    const keys = await RedisClient.keys(`photos:*:${username}`);
+    const keys = await RedisClient.keys(`photos:*`);
     if (keys.length > 0) {
       await RedisClient.del(...keys);
     }
 
-    if (!photo) {
+    if (!createdPhoto) {
       throw createError("Unable to create photo", 400);
     }
     return createdPhoto;

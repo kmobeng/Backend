@@ -1,13 +1,12 @@
 import { RedisClient } from "../config/db.config";
 import User from "../model/user.model";
-import msgpack from "msgpack-lite";
 
 export const getAllUsersService = async () => {
   const usersKey = `users:all`;
   try {
-    const cachedUsers = await RedisClient.getBuffer(usersKey);
+    const cachedUsers = await RedisClient.get(usersKey);
     if (cachedUsers) {
-      return msgpack.decode(cachedUsers);
+      return JSON.parse(cachedUsers);
     }
 
     const users = await User.find().lean({
@@ -16,8 +15,9 @@ export const getAllUsersService = async () => {
         return doc;
       },
     });
-    const encoded = msgpack.encode(users);
-    await RedisClient.setex(usersKey, 3600, encoded);
+    if (users.length > 0) {
+      await RedisClient.setex(usersKey, 3600, JSON.stringify(users));
+    }
     return users;
   } catch (error) {
     throw error;

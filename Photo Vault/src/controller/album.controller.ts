@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import {
   createAlbumService,
+  deleteSingleAlbumService,
   getAllAlbumsService,
   getSingleAlbumService,
   updateSingleAlbumService,
@@ -13,16 +14,13 @@ export const createAlbum = async (
   next: NextFunction
 ) => {
   try {
-    const { username } = req.params;
+    const userId = req.user._id;
+
     const { name } = req.body;
     if (!name) {
       return createError("Please provide name of album", 400);
     }
-    const album = await createAlbumService(
-      name,
-      req.user._id.toString(),
-      username as string
-    );
+    const album = await createAlbumService(name, userId);
     res.status(201).json({ status: "success", data: album });
   } catch (error) {
     next(error);
@@ -35,14 +33,10 @@ export const getAllAlbums = async (
   next: NextFunction
 ) => {
   try {
-    const { username } = req.params;
-    const albums = await getAllAlbumsService(
-      username as string,
-      req.user._id.toString(),
-      req.query
-    );
+    const userId = req.params.userId || req.user._id;
+    const albums = await getAllAlbumsService(userId, req.query);
     if (albums.length < 1) {
-      return res.status(400).json({ message: "No albums found" });
+      return res.status(404).json({ message: "No albums found" });
     }
 
     res
@@ -59,19 +53,12 @@ export const getSingleAlbum = async (
   next: NextFunction
 ) => {
   try {
-    const { albumId, username } = req.params;
-    if (!albumId || !username) {
-      throw createError("No album id or username provided", 400);
+    const { albumId } = req.params;
+    if (!albumId) {
+      throw createError("No album id provided", 400);
     }
-
-    const album = await getSingleAlbumService(
-      albumId,
-      req.user._id.toString(),
-      username
-    );
-    if (album === null) {
-      return res.status(400).json({ message: "No album found" });
-    }
+    const userId = req.params.userId || req.user._id.toString();
+    const album = await getSingleAlbumService(albumId, userId);
 
     res.status(200).json({ status: "success", data: { album } });
   } catch (error) {
@@ -85,22 +72,33 @@ export const updateSingleAlbum = async (
   next: NextFunction
 ) => {
   try {
-    const { username, albumId } = req.params;
-    if (!username || !albumId) {
-      throw createError("No username or album ID provided", 400);
+    const { albumId } = req.params;
+    if (!albumId) {
+      throw createError("No album ID provided", 400);
     }
+    const userId = req.params.userId || req.user._id.toString();
     const { name } = req.body;
-    const album = await updateSingleAlbumService(
-      albumId,
-      req.user._id.toString(),
-      name,
-      username
-    );
-    if (album === null) {
-      res.status(400).json({ message: "No album found" });
-    }
+    const album = await updateSingleAlbumService(albumId, userId, name);
 
     res.status(200).json({ status: "success", data: album });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteSingleAlbum = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { albumId } = req.params;
+    if (!albumId) {
+      throw createError("Invalid album ID", 400);
+    }
+    const userId = req.params.userId || req.user._id.toString();
+    const album = await deleteSingleAlbumService(albumId, userId);
+    res.status(200).json({ status: "success" });
   } catch (error) {
     next(error);
   }

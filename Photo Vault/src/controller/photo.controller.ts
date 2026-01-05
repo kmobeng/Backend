@@ -15,12 +15,11 @@ export const uploadPhoto = async (
 ) => {
   try {
     const { title, description, visibility } = req.body;
-    const { username, albumId } = req.params;
+    const { albumId } = req.params;
+    const userId = req.params.userId || req.user._id.toString();
     const photo = req.file;
-    const userId = req.user._id.toString();
 
     const photoResult = await uploadPhotoService(
-      username as string,
       title,
       description,
       visibility,
