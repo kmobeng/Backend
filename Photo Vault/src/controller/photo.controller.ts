@@ -14,9 +14,9 @@ export const uploadPhoto = async (
   next: NextFunction
 ) => {
   try {
-    const { title, description, visibility } = req.body;
-    const { albumId } = req.params;
-    const userId = req.params.userId || req.user._id.toString();
+    const { title, description, visibility, albumId } = req.body;
+
+    const userId = req.user._id.toString();
     const photo = req.file;
 
     const photoResult = await uploadPhotoService(
@@ -40,10 +40,9 @@ export const getAllPhotos = async (
   next: NextFunction
 ) => {
   try {
-    const username = req.params.username || req.user.username;
-
+    const userId = req.params.userId || req.user._id.toString();
     const photos = await getAllPhotosService(
-      username,
+      userId,
       req.user._id.toString(),
       req.query
     );
@@ -69,19 +68,13 @@ export const getSinglePhoto = async (
     if (!photoId) {
       throw createError("No photo id provided", 400);
     }
-    const { username } = req.params;
-    if (!username) {
-      throw createError("No photo id provided", 400);
-    }
+    const userId = req.params.userId || req.user._id.toString();
     const photo = await getSinglePhotoService(
       photoId,
-      req.user._id.toString(),
-      username as string
+      userId,
+      req.user._id.toString()
     );
 
-    if (photo === null) {
-      return res.status(400).json({ message: "No photo found" });
-    }
     res.status(200).json({ status: "success", data: photo });
   } catch (error) {
     next(error);
@@ -96,18 +89,11 @@ export const updatePhoto = async (
   try {
     const { title, visibility } = req.body;
     const { photoId } = req.params;
-    const { username } = req.params;
-    if (!photoId || !username) {
-      throw createError("No username or photoID provided", 400);
+    if (!photoId) {
+      throw createError("No photoID provided", 400);
     }
-
-    const photo = await updatePhotoService(
-      title,
-      visibility,
-      photoId,
-      req.user._id.toString(),
-      username
-    );
+    const userId = req.user._id.toString();
+    const photo = await updatePhotoService(title, visibility, photoId, userId);
 
     res.status(200).json({ status: "success", data: photo });
   } catch (error) {
@@ -121,16 +107,12 @@ export const deletePhoto = async (
   next: NextFunction
 ) => {
   try {
-    const { photoId, username } = req.params;
-    if (!username || !photoId) {
-      throw createError("Please provide username and photoId", 400);
+    const { photoId } = req.params;
+    if (!photoId) {
+      throw createError("Please provide photoId", 400);
     }
 
-    const photo = await deletePhotoService(
-      photoId,
-      req.user._id.toString(),
-      username as string
-    );
+    const photo = await deletePhotoService(photoId, req.user._id.toString());
 
     res.status(200).json({ status: "success" });
   } catch (error) {

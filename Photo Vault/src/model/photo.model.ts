@@ -1,4 +1,4 @@
-import { Document, InferSchemaType, model, ObjectId, Schema } from "mongoose";
+import { InferSchemaType, model, Schema } from "mongoose";
 
 const PhotoSchema = new Schema({
   title: { type: String, required: [true, "title is required"] },

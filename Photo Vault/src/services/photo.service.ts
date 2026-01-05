@@ -2,7 +2,6 @@ import mongoose, { Types } from "mongoose";
 import Photo from "../model/photo.model";
 import { createError } from "../utils/error.util";
 import { cloudinary, RedisClient } from "../config/db.config";
-import User from "../model/user.model";
 import APIFeatures from "../utils/APIFeatures.util";
 
 export const uploadPhotoService = async (
@@ -15,11 +14,11 @@ export const uploadPhotoService = async (
 ) => {
   let publicId;
   try {
-    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
-      throw createError("Invalid user id", 400);
-    }
-    if (albumId && !mongoose.Types.ObjectId.isValid(albumId)) {
-      throw createError("Invalid album id", 400);
+    if (
+      (albumId && !mongoose.Types.ObjectId.isValid(albumId)) ||
+      !mongoose.Types.ObjectId.isValid(userId)
+    ) {
+      throw createError("Invalid user id or album id", 400);
     }
 
     if (!photo || !photo.buffer) {
@@ -57,7 +56,7 @@ export const uploadPhotoService = async (
       album: albumId,
     });
 
-    const keys = await RedisClient.keys(`photos:*`);
+    const keys = await RedisClient.keys(`photos:${userId}:*`);
     if (keys.length > 0) {
       await RedisClient.del(...keys);
     }
@@ -80,46 +79,22 @@ export const uploadPhotoService = async (
 };
 
 export const getAllPhotosService = async (
-  username: string,
   userId: string,
+  reqUserId: string,
   queryString: any
 ) => {
-  const userKey = `user:${userId}:${username}`;
-  const photosKey = `photos:${userId}:${username}`;
-
+  if (userId !== reqUserId) {
+    queryString.visibility = "public";
+  }
+  const photosKey = `photos:${userId}:${JSON.stringify(queryString)}`;
   try {
     const cachedPhotos = await RedisClient.get(photosKey);
 
     if (cachedPhotos) {
-      console.log("Photos cache hit");
       return JSON.parse(cachedPhotos);
     }
 
-    console.log("Photos cache miss");
-
-    let user;
-    const cachedUser = await RedisClient.get(userKey);
-
-    if (cachedUser) {
-      console.log("User cache hit");
-      user = JSON.parse(cachedUser);
-    } else {
-      console.log("User cache miss");
-      user = await User.findOne({ username }).select("_id username").lean();
-
-      if (!user) {
-        throw createError("Error fetching photos", 404);
-      }
-
-      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
-    }
-
-    const filter: any = { user: user._id };
-
-    if (user._id.toString() !== userId) {
-      filter.visibility = "public";
-      queryString.visibility = undefined;
-    }
+    const filter: any = { user: userId };
 
     const features = new APIFeatures(Photo.find(filter), queryString)
       .filter()
@@ -129,9 +104,7 @@ export const getAllPhotosService = async (
 
     const photos = await features.query;
 
-    if (photos.length > 0) {
-      await RedisClient.setex(photosKey, 3600, JSON.stringify(photos));
-    }
+    await RedisClient.setex(photosKey, 3600, JSON.stringify(photos));
 
     return photos;
   } catch (error) {
@@ -142,43 +115,38 @@ export const getAllPhotosService = async (
 export const getSinglePhotoService = async (
   photoId: any,
   userId: string,
-  username: string
+  reqUserId: string
 ) => {
-  const photoKey = `photo:${userId}:${photoId}`;
-
   try {
+    if (
+      !mongoose.Types.ObjectId.isValid(photoId) ||
+      !mongoose.Types.ObjectId.isValid(userId)
+    ) {
+      throw createError("Invalid user ID or photo ID", 400);
+    }
+
+    const isOwner = userId === reqUserId;
+    const photoKey = `photo:${userId}:${photoId}:${
+      isOwner ? "owner" : "public"
+    }`;
+
     const cachedPhoto = await RedisClient.get(photoKey);
 
     if (cachedPhoto) {
-      console.log("Photos cache hit");
       return JSON.parse(cachedPhoto);
     }
 
-    console.log("Photos cache miss");
-    if (!mongoose.Types.ObjectId.isValid(photoId)) {
-      throw createError("Invalid photo ID", 400);
+    const query: any = { _id: photoId, user: userId };
+    if (!isOwner) {
+      query.visibility = "public";
     }
 
-    const photo = await Photo.findOne({ _id: photoId }).populate({
-      path: "user",
-      select: "_id username",
-    });
+    const photo = await Photo.findOne(query);
     if (!photo) {
-      throw createError("Error while fetching photo", 400);
+      throw createError("No photo found", 404);
     }
-    const populatedUser = photo?.user as any;
-    if (username !== populatedUser.username) {
-      throw createError("Error while fetching photo", 400);
-    }
-    if (
-      photo?.user._id.toString() !== userId &&
-      photo?.visibility === "private"
-    ) {
-      return null;
-    }
-    if (photo !== null) {
-      RedisClient.setex(photoKey, 3600, JSON.stringify(photo));
-    }
+
+    RedisClient.setex(photoKey, 3600, JSON.stringify(photo));
 
     return photo;
   } catch (error) {
@@ -190,37 +158,26 @@ export const updatePhotoService = async (
   title: string,
   visibility: string,
   photoId: any,
-  userId: string,
-  username: string
+  userId: string
 ) => {
-  const userKey = `user:${userId}:${username}`;
-
   try {
-    if (!mongoose.Types.ObjectId.isValid(photoId)) {
-      throw createError("Invalid photo ID", 400);
-    }
-    let user;
-    const cachedUser = await RedisClient.get(userKey);
-    if (cachedUser) {
-      user = JSON.parse(cachedUser);
-    } else {
-      user = await User.findOne({ _id: userId }).select("_id username");
-      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
+    if (
+      !mongoose.Types.ObjectId.isValid(photoId) ||
+      !mongoose.Types.ObjectId.isValid(userId)
+    ) {
+      throw createError("Invalid user ID or photo ID", 400);
     }
 
-    if (username !== user.username) {
-      throw createError("Error while updating photo", 400);
-    }
     const photo: any = await Photo.findOneAndUpdate(
-      { user: user._id, _id: photoId },
+      { _id: photoId, user: userId },
       { $set: { title, visibility } },
       { new: true, runValidators: true }
     );
     if (!photo) {
-      throw createError("Unable to update photo", 400);
+      throw createError("No photo Id", 400);
     }
-    const photosKey = await RedisClient.keys(`photos:*:${user.username}`);
-    const photoKey = await RedisClient.keys(`photo:*:${photoId}`);
+    const photosKey = await RedisClient.keys(`photos:${userId}:*`);
+    const photoKey = await RedisClient.keys(`photo:${userId}:${photoId}:*`);
 
     if (photosKey.length !== 0) {
       await RedisClient.del(...photosKey);
@@ -235,44 +192,28 @@ export const updatePhotoService = async (
   }
 };
 
-export const deletePhotoService = async (
-  photoId: any,
-  userId: string,
-  username: string
-) => {
-  const userKey = `user:${userId}:${username}`;
+export const deletePhotoService = async (photoId: any, userId: string) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(photoId)) {
       throw createError("Invalid photo ID", 400);
     }
-    let user;
-    const cachedUser = await RedisClient.get(userKey);
-    if (cachedUser) {
-      user = JSON.parse(cachedUser);
-    } else {
-      user = await User.findOne({ _id: userId }).select("_id username");
-      await RedisClient.setex(userKey, 86400, JSON.stringify(user));
-    }
-    if (username !== user.username) {
-      throw createError("Error while deleting photo", 400);
-    }
 
     const photo: any = await Photo.findOne({
-      user: userId,
       _id: photoId,
-    }).populate({ path: "user", select: "_id username" });
+      user: userId,
+    });
     if (!photo) {
-      throw createError("Unable to delete photo", 400);
+      throw createError("No photo found", 404);
     }
 
     try {
-      await cloudinary.uploader.destroy(photo?.publicId);
+      await cloudinary.uploader.destroy(photo.publicId);
     } catch (error) {
       throw createError("Unable to delete from cloudinary", 400);
     }
 
-    const photosKey = await RedisClient.keys(`photos:*:${photo.user.username}`);
-    const photoKey = await RedisClient.keys(`photo:*:${photoId}`);
+    const photosKey = await RedisClient.keys(`photos:${userId}:*`);
+    const photoKey = await RedisClient.keys(`photo:${userId}:${photoId}:*`);
 
     if (photosKey.length !== 0) {
       await RedisClient.del(...photosKey);
@@ -281,7 +222,7 @@ export const deletePhotoService = async (
       await RedisClient.del(...photoKey);
     }
 
-    const deletedPhoto = await Photo.findByIdAndDelete(photo._id);
+    const deletedPhoto = await Photo.findByIdAndDelete(photoId);
 
     return deletedPhoto;
   } catch (error) {

@@ -11,17 +11,21 @@ import multer from "multer";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-const router = Router({ mergeParams: true });
+const router = Router();
+router.use(protect);
 
 router
-  .route("/")
-  .post(protect, upload.single("photo"), uploadPhoto)
-  .get(protect, getAllPhotos);
+  .route("/photo")
+  .post(upload.single("photo"), uploadPhoto)
+  .get(getAllPhotos);
 
 router
-  .route("/:photoId")
-  .get(protect, getSinglePhoto)
-  .patch(protect, updatePhoto)
-  .delete(protect, deletePhoto);
+  .route("/photo/:photoId")
+  .get(getSinglePhoto)
+  .patch(updatePhoto)
+  .delete(deletePhoto);
 
+router.route("/:userId/photo").get(getAllPhotos);
+
+router.route("/:userId/photo/:photoId").get(getSinglePhoto);
 export default router;
