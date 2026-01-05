@@ -198,7 +198,7 @@ export const deletePhotoService = async (photoId: any, userId: string) => {
       throw createError("Invalid photo ID", 400);
     }
 
-    const photo: any = await Photo.findOne({
+    const photo: any = await Photo.findOneAndDelete({
       _id: photoId,
       user: userId,
     });
@@ -206,11 +206,7 @@ export const deletePhotoService = async (photoId: any, userId: string) => {
       throw createError("No photo found", 404);
     }
 
-    try {
-      await cloudinary.uploader.destroy(photo.publicId);
-    } catch (error) {
-      throw createError("Unable to delete from cloudinary", 400);
-    }
+    await cloudinary.uploader.destroy(photo.publicId);
 
     const photosKey = await RedisClient.keys(`photos:${userId}:*`);
     const photoKey = await RedisClient.keys(`photo:${userId}:${photoId}:*`);
@@ -222,9 +218,7 @@ export const deletePhotoService = async (photoId: any, userId: string) => {
       await RedisClient.del(...photoKey);
     }
 
-    const deletedPhoto = await Photo.findByIdAndDelete(photoId);
-
-    return deletedPhoto;
+    return photo;
   } catch (error) {
     throw error;
   }
