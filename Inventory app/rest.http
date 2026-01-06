@@ -1,0 +1,27 @@
+###
+POST http://localhost:4000/api/inventory/create
+Content-Type: application/json
+
+{
+    "name": "Laptop",
+    "price": 4000,
+    "quantity": 10
+}
+
+###
+GET http://localhost:4000/api/inventory/all
+
+###
+GET http://localhost:4000/api/inventory/single/68e04e7c5587a6c806f19825
+
+###
+PATCH http://localhost:4000/api/inventory/update/68e077b44e22c8cec7e0adfc
+Content-Type: application/json
+
+{
+    "price": 3000
+}
+
+###
+DELETE http://localhost:4000/api/inventory/delete/68e077b44e22c8cec7e0adfc
+Content-Type: application/json
