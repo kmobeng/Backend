@@ -43,3 +43,38 @@ export const getSingleUserService = async (userId: string) => {
     throw error;
   }
 };
+
+export const updateMeService = async (
+  userId: string,
+  name: string,
+  username: string
+) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: { name, username } },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+    if (!user) {
+      throw createError("Unable to update user", 404);
+    }
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteUserService = async (userId: string) => {
+  try {
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      throw createError("No user found", 404);
+    }
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};
