@@ -3,7 +3,6 @@ import { RedisClient } from "../config/db.config";
 import User from "../model/user.model";
 import { createError } from "../utils/error.util";
 import APIFeatures from "../utils/APIFeatures.util";
-import Redis from "ioredis";
 
 export const getAllUsersService = async (queryString: any) => {
   const usersKey = `users:all`;

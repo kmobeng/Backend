@@ -1,3 +1,4 @@
+import { RedisClient } from "../config/db.config";
 import User from "../model/user.model";
 import { createError } from "../utils/error.util";
 
@@ -10,6 +11,7 @@ export const signUpService = async (
   role: string
 ) => {
   try {
+    const usersKey = `users:all`;
     const user = await User.create({
       name,
       email,
@@ -21,6 +23,7 @@ export const signUpService = async (
     if (!user) {
       throw createError("Error while creating user", 400);
     }
+    RedisClient.del(usersKey);
     return user;
   } catch (error) {
     throw error;
