@@ -1,7 +1,6 @@
 import { RedisClient } from "../config/db.config";
 import Album from "../model/album.model";
 import { createError } from "../utils/error.util";
-import User from "../model/user.model";
 import APIFeatures from "../utils/APIFeatures.util";
 import mongoose from "mongoose";
 
@@ -94,14 +93,12 @@ export const updateSingleAlbumService = async (
       throw createError("Error while updating album", 400);
     }
     const albumsKeys = await RedisClient.keys(`albums:${userId}:*`);
-    const albumKey = await RedisClient.keys(`album:${albumId}`);
 
     if (albumsKeys.length !== 0) {
       await RedisClient.del(...albumsKeys);
     }
-    if (albumKey.length !== 0) {
-      await RedisClient.del(...albumKey);
-    }
+    await RedisClient.del(`album:${albumId}`);
+
     return album;
   } catch (error) {
     throw error;

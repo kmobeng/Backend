@@ -86,7 +86,15 @@ export const getAllPhotosService = async (
   if (userId !== reqUserId) {
     queryString.visibility = "public";
   }
-  const photosKey = `photos:${userId}:${JSON.stringify(queryString)}`;
+
+  const normalizedQuery = Object.keys(queryString)
+    .sort()
+    .reduce((acc: any, key) => {
+      acc[key] = queryString[key];
+      return acc;
+    }, {});
+
+  const photosKey = `photos:${userId}:${JSON.stringify(normalizedQuery)}`;
   try {
     const cachedPhotos = await RedisClient.get(photosKey);
 
@@ -177,14 +185,12 @@ export const updatePhotoService = async (
       throw createError("No photo Id", 400);
     }
     const photosKey = await RedisClient.keys(`photos:${userId}:*`);
-    const photoKey = await RedisClient.keys(`photo:${userId}:${photoId}:*`);
 
     if (photosKey.length !== 0) {
       await RedisClient.del(...photosKey);
     }
-    if (photoKey.length !== 0) {
-      await RedisClient.del(...photoKey);
-    }
+    await RedisClient.del(`photo:${userId}:${photoId}:owner`);
+    await RedisClient.del(`photo:${userId}:${photoId}:public`);
 
     return photo;
   } catch (error) {
@@ -209,14 +215,12 @@ export const deletePhotoService = async (photoId: any, userId: string) => {
     await cloudinary.uploader.destroy(photo.publicId);
 
     const photosKey = await RedisClient.keys(`photos:${userId}:*`);
-    const photoKey = await RedisClient.keys(`photo:${userId}:${photoId}:*`);
 
     if (photosKey.length !== 0) {
       await RedisClient.del(...photosKey);
     }
-    if (photoKey.length !== 0) {
-      await RedisClient.del(...photoKey);
-    }
+    await RedisClient.del(`photo:${userId}:${photoId}:owner`);
+    await RedisClient.del(`photo:${userId}:${photoId}:public`);
 
     return photo;
   } catch (error) {
