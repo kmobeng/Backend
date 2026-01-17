@@ -24,10 +24,15 @@ export const signUp = async (
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
-        return res.status(400).json({status: "fail", messagae:"Provide name , email and password"})
+      return res
+        .status(400)
+        .json({
+          status: "fail",
+          messagae: "Provide name , email and password",
+        });
     }
 
-     const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({
         status: "fail",
@@ -123,7 +128,7 @@ export const protect = async (
       });
     }
 
-    req.user = currentUser as IUser
+    req.user = currentUser as IUser;
 
     next();
   } catch (error) {
