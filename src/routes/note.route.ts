@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { checkGrammar } from "../controllers/note.controller";
 
-const router = Router()
+const noteRoute = Router()
 
-router.post("/check-grammar", checkGrammar)
+noteRoute.post("/check-grammar", checkGrammar)
 
-export default router
+export default noteRoute
