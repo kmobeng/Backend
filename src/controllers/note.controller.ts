@@ -61,3 +61,17 @@ export const saveNote = async(req: Request, res: Response, next: NextFunction):P
       .json({ status: "fail", message: "Internal server error" });
     }
 }
+
+export const getAllNotes = async (req: Request,res: Response,next: NextFunction): Promise<Response>=>{
+  try {
+    const notes = await Note.find({user: req.user._id})
+    if (!notes) {
+      return res.status(404).json({status:"fail", message:"No notes found"})
+    }
+    return res.status(200).json({status: "success", data: notes})
+  } catch (error) {
+     return res
+      .status(500)
+      .json({ status: "fail", message: "Internal server error" });
+  }
+}
