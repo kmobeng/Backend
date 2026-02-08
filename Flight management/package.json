@@ -2,9 +2,9 @@
   "name": "flight-management",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon ./src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +16,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.2",
     "morgan": "^1.10.1",
+    "nodemailer": "^8.0.1",
     "nodemon": "^3.1.10",
     "validator": "^13.15.20",
     "winston": "^3.18.3"
