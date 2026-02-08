@@ -5,6 +5,7 @@ const { promisify } = require("util");
 const JWT = require("jsonwebtoken");
 const logger = require("../config/logger.config");
 const { Email } = require("../utils/email.util");
+const crypto = require("crypto")
 
 exports.signup = async (req, res, next) => {
   try {
@@ -181,3 +182,32 @@ If you didn't forget your password, please ignore this email.`;
 };
 
 
+exports.resetPassword = async (req,res,next) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      throw createError("Token is required", 400);
+    }
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return next(createError("Token is invalid or has expired", 400));
+    }
+
+    user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+
+    await user.save();
+    res.status(200).json({ status: "success", message: "Password changed" });
+  } catch (error) {
+    next(error);
+  }
+};
