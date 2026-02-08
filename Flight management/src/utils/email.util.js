@@ -8,7 +8,7 @@ const Email = async (options) => {
   });
 
   const mailOptions = {
-    from: "Photo Vault <noreply@topschedule.com>",
+    from: "Premium Air <noreply@topschedule.com>",
     to: options.email,
     subject: options.subject,
     text: options.message,
