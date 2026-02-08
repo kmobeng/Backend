@@ -9,7 +9,8 @@ const app = express();
 
 app.use(express.json());
 app.use(morgan("dev"));
-app.use("/api/flight/", UserRoute, FlightRoute);
+app.use("/api/auth", UserRoute);
+app.use("/api/flight/", FlightRoute);
 app.use("/api/bookings", BookingRoute);
 app.use(errorHandler);
 
