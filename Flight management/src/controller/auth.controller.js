@@ -140,7 +140,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 
   const resetURL = `${req.protocol}://${req.get(
     "host"
-  )}/api/users/resetPassword/${resetToken}`;
+  )}/api/users/reset-password/${resetToken}`;
 
   const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email`;
   try {
