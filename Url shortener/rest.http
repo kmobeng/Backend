@@ -1,0 +1,25 @@
+###
+POST http://localhost:5000/api/shorten
+Content-Type: application/json
+
+{
+ "url": "https://github.com/kmobeng",
+ "short": "kenngit"
+}
+
+###
+GET http://localhost:5000/api/shorten/kenngit
+
+###
+PATCH http://localhost:5000/api/shorten/kenngit
+Content-Type: application/json
+
+{
+ "url": "https://github.com/kmobeng"
+}
+
+###
+DELETE http://localhost:5000/api/shorten/short-3f913a
+
+###
+GET http://localhost:5000/api/kenngit/stats
