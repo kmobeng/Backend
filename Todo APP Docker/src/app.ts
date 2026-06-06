@@ -12,6 +12,6 @@ app.get('/', (req, res) => {
   res.send('Hello, World!');
 });
 
-app.use('/api/todos',todoRoute);
+app.use('/api',todoRoute);
 
 export default app;

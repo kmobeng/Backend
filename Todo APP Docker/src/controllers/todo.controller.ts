@@ -3,8 +3,8 @@ import { Request, Response } from "express";
 
 export const createTodo = async (req: Request, res: Response) => {
   try {
-    const { title } = req.body;
-    const newTodo = await Todo.create({ title }); 
+    const { title,description } = req.body;
+    const newTodo = await Todo.create({ title, description }); 
     res.status(201).json({status: "success", data: newTodo});
   } catch (error) {
     res.status(500).json({ message: "Error creating todo", error });
@@ -38,10 +38,10 @@ export const getTodoById = async (req: Request, res: Response) => {
 export const updateTodo = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, completed } = req.body;
+        const { title, description, completed } = req.body;
         const updatedTodo = await Todo.findByIdAndUpdate(
             id,
-            { title, completed },
+            { title, description, completed },
             { new: true }
         );
         if (!updatedTodo) {

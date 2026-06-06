@@ -1,0 +1,25 @@
+###
+POST http://localhost:3000/api/todos
+Content-Type: application/json
+
+{
+    "title": "Go to class"
+}
+
+###
+GET http://localhost:3000/api/todos
+
+###
+GET http://localhost:3000/api/todos/6a244d3af3e861b2e1566077
+
+###
+PATCH http://localhost:3000/api/todos/6a244d3af3e861b2e1566077
+Content-Type: application/json
+
+{
+    "description": "Milk, Bread, Eggs, Apples",
+    "completed": false
+}
+
+###
+DELETE http://localhost:3000/api/todos/6a244d66f3e861b2e1566078
