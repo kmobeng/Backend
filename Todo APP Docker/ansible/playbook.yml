@@ -1,0 +1,64 @@
+---
+- name: Configure todo app server
+  hosts: todo_server
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        update_cache: yes
+        state: present
+
+    - name: Ensure Docker is running
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create app directory
+      file:
+        path: /opt/todo-app
+        state: directory
+
+    - name: Copy docker-compose.yml to server
+      copy:
+        src: ../docker-compose.prod.yml
+        dest: /opt/todo-app/docker-compose.yml
+
+    - name: Pull latest images
+      command: docker compose pull
+      args:
+        chdir: /opt/todo-app
+
+    - name: Start containers
+      command: docker compose up -d
+      args:
+        chdir: /opt/todo-app
